@@ -11,15 +11,14 @@
 	 */
 	$.fn.chunkatron = function (overrides) {
 
-		// If any of these overrides are missing, an error will be thrown.
-		var requiredOptions = ['url', 'onChunkComplete'];
-
 		// Default options to be overrided.
 		var defaultOptions = {
 			// Required options
-			url: null, onChunkComplete: null, /* and either */ chunks: null, /* or */ chunksUrl: null,
+			url: null,
+			/* either */ onChunkSuccess: null, /* or */ onObjectDownloaded: null,
+			/* either */ chunks: null, /* or */ chunksUrl: null,
 			// Events (optional)
-			onComplete: null, onChunkSuccess: null, onChunkError: null, onChunkGiveUp: null, onFinished: null,
+			onComplete: null, onChunkComplete: null, onChunkError: null, onChunkGiveUp: null, onFinished: null,
 			// Other (optional)
 			verbose: false, dataType: 'json', maxDownloadRetries: 3, concurrentDownloadsMax: 10
 		};
@@ -43,16 +42,13 @@
 		 * Ensure the required settings have been provided.
 		 */
 		this.verifySettings = function () {
-			for (var setting in this.settings) {
-				// Only check properties on the object, not those it obtained via the prototype.
-				if (this.settings.hasOwnProperty(setting)) {
-					if ($.inArray(setting, requiredOptions) >= 0 && this.settings[setting] == null) {
-						throw new Error('Chunkatron requires a value for the \'' + setting + '\' setting');
-					}
-				}
-			}
+			// We need chunk data, this can be provided directly or by a url.
 			if (this.settings.chunks == null && this.settings.chunksUrl == null) {
 				throw new Error('Either the chunks or the chunksUrl must be provided');
+			}
+			// It is not our job to process the data returned, we need to pass this back to the user using these callbacks.
+			if (typeof this.settings.onChunkSuccess != 'function' && typeof this.settings.onObjectDownloaded != 'function') {
+				throw new Error('A callback for \'onChunkSuccess\' or \'onObjectDownloaded\' needs to be provided');
 			}
 		};
 
@@ -106,6 +102,12 @@
 				success: function (data, status, xhr) {
 					// Send the data we recieved to the user-defined callback (it is not our job to process it).
 					self.callback(self.settings.onChunkSuccess, data);
+					// Fire the objectDownloaded callback passing each object we got in the chunk.
+					if (typeof self.settings.onObjectDownloaded == 'function') {
+						for (var i in data) {
+							self.callback(self.settings.onObjectDownloaded, data[i]);
+						}
+					}
 				},
 				// Called when there was an error - Usually going to be 404 or 504
 				error: function (xhr, status, error) {
