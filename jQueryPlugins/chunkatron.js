@@ -1,4 +1,4 @@
-(function () {
+(function() {
 
 	/**
 	 * The Chunkatron's purpose is to download lots of data via seperate calls. When reports take a long time to load,
@@ -9,18 +9,85 @@
 	 * @param overrides
 	 * @returns {$.fn}
 	 */
-	$.fn.chunkatron = function (overrides) {
+	$.fn.chunkatron = function(overrides) {
 
 		// Default options to be overrided.
 		var defaultOptions = {
-			// Required options
+
+			/**
+			 * The location to send Ajax requests to with our chunk data.
+			 */
 			url: null,
-			/* either */ onChunkSuccess: null, /* or */ onObjectDownloaded: null,
-			/* either */ chunks: null, /* or */ chunksUrl: null,
-			// Events (optional)
-			onComplete: null, onChunkComplete: null, onChunkError: null, onChunkGiveUp: null, onFinished: null,
-			// Other (optional)
-			verbose: false, dataType: 'json', maxDownloadRetries: 3, concurrentDownloadsMax: 10
+
+			/**
+			 * An array containing an array of Ids to be sent for processing at the @see url (usually injected via templates).
+			 */
+			chunks: null,
+
+			/**
+			 * The Url to download the chunks from if not provided using the @see chunks variable above.
+			 */
+			chunksUrl: null,
+
+			/**
+			 * Fired when an Ajax call returns a success response.
+			 */
+			onChunkSuccess: null,
+
+			/**
+			 * Fired when a chunk has been downloaded, a call will be made for every object in the chunk.
+			 */
+			onObjectDownloaded: null,
+
+			/**
+			 * Fired when an Ajax request comes to an end (after onChunkSuccess/onChunkError).
+			 */
+			onChunkComplete: null,
+
+			/**
+			 * Fired when the Ajax request returns an error.
+			 */
+			onChunkError: null,
+
+			/**
+			 * Fired when all retries have been made with a chunk but it errored every time.
+			 */
+			onChunkGiveUp: null,
+
+			/**
+			 * Fired when no more work remains.
+			 */
+			onFinished: null,
+
+			/**
+			 * Fired when the initial chunk list is downloaded from the external source (@see chunksUrl)
+			 */
+			onChunksUrlComplete: null,
+
+			/**
+			 * Fired immediately before an Ajax call is sent to the provided url.
+			 */
+			onChunkDownloadStart: null,
+
+			/**
+			 * Display console.log information about what is happening, useful for debugging.
+			 */
+			verbose: false,
+
+			/**
+			 * The dataType to use for Ajax requests.
+			 */
+			dataType: 'json',
+
+			/**
+			 * The number of attempts that should be made to download a chunk that errors.
+			 */
+			maxDownloadRetries: 3,
+
+			/**
+			 * The maximum number of concurrent requests that the Chunkatron should make at any one time.
+			 */
+			concurrentDownloadsMax: 10
 		};
 
 		// Load in the default settings and override them with the ones provided.
@@ -41,7 +108,7 @@
 		/**
 		 * Ensure the required settings have been provided.
 		 */
-		this.verifySettings = function () {
+		this.verifySettings = function() {
 			// We need chunk data, this can be provided directly or by a url.
 			if (this.settings.chunks == null && this.settings.chunksUrl == null) {
 				throw new Error('Either the chunks or the chunksUrl must be provided');
@@ -55,7 +122,7 @@
 		/**
 		 * Download a chunk of data.
 		 */
-		this.downloadChunk = function () {
+		this.downloadChunk = function() {
 
 			if (this.settings.verbose) console.log('Chunk download starting... There are ' + this.chunks.length + ' chunk(s) remaining.');
 
@@ -99,7 +166,7 @@
 					chunk: currentChunk
 				},
 				// Called when the request was successful.
-				success: function (data, status, xhr) {
+				success: function(data, status, xhr) {
 					// Send the data we recieved to the user-defined callback (it is not our job to process it).
 					self.callback(self.settings.onChunkSuccess, data);
 					// Fire the objectDownloaded callback passing each object we got in the chunk.
@@ -110,7 +177,7 @@
 					}
 				},
 				// Called when there was an error - Usually going to be 404 or 504
-				error: function (xhr, status, error) {
+				error: function(xhr, status, error) {
 					// Keep a record of this chunk failing.
 					var chunkIdentifier = currentChunk[0];
 					self.chunkFailures[chunkIdentifier] = (self.chunkFailures[chunkIdentifier] == null) ? 1 : self.chunkFailures[chunkIdentifier] + 1;
@@ -119,7 +186,7 @@
 					self.callback(self.settings.onChunkError, error);
 				},
 				// This function is ran after success and error.
-				complete: function (xhr, status) {
+				complete: function(xhr, status) {
 					// This download is finished (success or error, doesn't matter).
 					self.concurrentDownloads--;
 					self.callback(self.settings.onChunkComplete);
@@ -134,7 +201,7 @@
 		 * Used to fire callbacks/events that occour during the downloading process.
 		 * @param callback
 		 */
-		this.callback = function (callback, params) {
+		this.callback = function(callback, params) {
 			if (typeof callback == 'function') {
 				if (params) {
 					callback(params);
@@ -172,6 +239,7 @@
 				dataType: this.settings.dataType,
 				success: function(data) {
 					self.settings.chunks = data;
+					self.callback(self.settings.onChunksUrlComplete, data.length);
 					self.start();
 				},
 				error: function() {
