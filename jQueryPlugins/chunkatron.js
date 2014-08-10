@@ -151,6 +151,8 @@
 				return;
 			}
 
+			this.callback(this.settings.onChunkDownloadStart);
+
 			// Update the number of concurrent downloads.
 			this.concurrentDownloads++;
 
